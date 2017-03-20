@@ -10,6 +10,7 @@ result = urlparse(url)
 print(url[:len(url) - len(result.path)])
 "
 CPCACHE_URL=$(python -c "$py_script")
+# CPCACHE_URL="127.0.0.1:7070"
 
 if [ -z "$CPCACHE_URL" ]; then
     >&2 echo "Unable to find cpcache mirror in /etc/pacman.d/mirrorlist"
@@ -24,7 +25,22 @@ set_arch() {
     fi
 }
 
+update() {
+    TMPFILE="$(mktemp)"
+    HASHFILE="$(mktemp)"
+    pacman -Qq > "$TMPFILE"
+    KEY="$(cat /etc/clyde_client/key)"
+    TIMESTAMP="$(date +%s)"
+    cat "$TMPFILE" > "$HASHFILE"
+    echo "$TIMESTAMP" >> "$HASHFILE"
+    HMAC="$(hmac256 "$KEY" < "$HASHFILE")"
+    curl -s -S --data-binary @"$TMPFILE" "$CPCACHE_URL/$ARCH/$(hostname)" -H 'Content-Type:text/plain; charset=utf8' -H "Authorization:$HMAC" -H "Timestamp: $TIMESTAMP"
+    rm "$TMPFILE"
+    rm "$HASHFILE"
+}
+
 set_arch
+update
 
 while read -r line; do
     if [ "$line" = "db.lck" ]; then
@@ -34,7 +50,7 @@ while read -r line; do
         NOW="$(date +%s)"
         DIFF=$((NOW-THEN))
         if [ $DIFF -ge 1 ]; then
-            pacman -Qq | curl -s -S --data-binary @- "$CPCACHE_URL/$ARCH/$(hostname)" -H 'Content-Type:text/plain; charset=utf8'
+            update
         fi
         THEN="$NOW"
     fi
