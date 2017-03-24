@@ -34,7 +34,7 @@ update() {
     cat "$TMPFILE" > "$HASHFILE"
     echo "$TIMESTAMP" >> "$HASHFILE"
     HMAC="$(hmac256 "$KEY" < "$HASHFILE")"
-    curl -s -S --data-binary @"$TMPFILE" "$CPCACHE_URL/$ARCH/$(hostname)" -H 'Content-Type:text/plain; charset=utf8' -H "Authorization:$HMAC" -H "Timestamp: $TIMESTAMP"
+    curl --fail -s -S --data-binary @"$TMPFILE" "$CPCACHE_URL/$ARCH/$(hostname)" -H 'Content-Type:text/plain; charset=utf8' -H "Authorization:$HMAC" -H "Timestamp: $TIMESTAMP"
     rm "$TMPFILE"
     rm "$HASHFILE"
 }
